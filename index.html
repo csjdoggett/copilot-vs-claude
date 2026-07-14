@@ -1,0 +1,1100 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Copilot vs Claude — how the toolkit got built</title>
+<style>html,body{margin:0}</style>
+</head>
+<body>
+<style>
+  :root {
+    /* Ground — pale, cool survey-film paper (not cream) */
+    --ground:    #e9edeb;
+    --ground-2:  #ffffff;
+    --ground-3:  #f3f6f4;
+    --line:      #ccd5d1;
+    --line-soft: #dee4e1;
+
+    /* Ink — cool near-black */
+    --ink:       #17241f;
+    --ink-dim:   #46534e;
+    --ink-faint: #78847f;
+
+    /* Semantic palette (readable on light) */
+    --copilot:   #a1670f;  /* amber  — Copilot / unresolved */
+    --copilot-d: #d9a441;
+    --claude:    #1f7a4d;  /* green  — Claude / shipped */
+    --claude-d:  #4aa877;
+    --surface:   #8a97a0;  /* grey pit mesh */
+    --alert:     #c0392b;  /* red — regression / wrong turn */
+
+    --font-mono: "Cascadia Code","Cascadia Mono","Consolas","SF Mono",ui-monospace,Menlo,monospace;
+    --font-sans: "Segoe UI Variable Display","Segoe UI",-apple-system,"Helvetica Neue",Arial,sans-serif;
+
+    --maxw: 1120px;
+    --readw: 40rem;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--font-sans);
+    font-size: 17px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+
+  .wrap { max-width: var(--maxw); margin: 0 auto; padding: 0 24px; }
+
+  h1, h2, h3 { text-wrap: balance; line-height: 1.08; letter-spacing: -0.02em; font-weight: 680; margin: 0; }
+
+  .eyebrow {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    margin: 0 0 1rem;
+  }
+  .mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+
+  p { margin: 0 0 1rem; max-width: var(--readw); color: var(--ink-dim); }
+  strong { color: var(--ink); font-weight: 620; }
+  a { color: var(--claude); text-decoration: underline; text-underline-offset: 2px; text-decoration-thickness: 1px; }
+  a:hover { color: var(--claude-d); }
+  a:focus-visible { outline: 2px solid var(--claude); outline-offset: 2px; border-radius: 2px; }
+
+  section { padding: clamp(4rem, 9vw, 8rem) 0; position: relative; }
+  .divide { border-top: 1px solid var(--line-soft); }
+
+  /* ---------- HERO ---------- */
+  #hero {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    position: relative;
+    overflow: hidden;
+    padding: 6rem 0;
+  }
+  #contours {
+    position: absolute; inset: 0;
+    width: 100%; height: 100%;
+    z-index: 0;
+    opacity: 0.85;
+  }
+  #hero .wrap { position: relative; z-index: 1; }
+  .hero-legend {
+    display: flex; gap: 1.4rem; flex-wrap: wrap;
+    font-family: var(--font-mono); font-size: 0.72rem;
+    letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-faint);
+    margin-bottom: 1.6rem;
+  }
+  .hero-legend span { display: inline-flex; align-items: center; gap: 0.5rem; }
+  .dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+  .dot.a { background: var(--copilot); }
+  .dot.c { background: var(--claude); }
+  .dot.s { background: var(--surface); }
+
+  #hero h1 {
+    font-size: clamp(2.4rem, 6vw, 4.6rem);
+    max-width: 17ch;
+    margin-bottom: 1.6rem;
+  }
+  #hero h1 .swap { color: var(--copilot); }
+  #hero h1 .swap2 { color: var(--claude); }
+  .standfirst {
+    font-size: clamp(1.05rem, 2vw, 1.3rem);
+    color: var(--ink-dim);
+    max-width: 48ch;
+    line-height: 1.5;
+  }
+  .scrollcue {
+    margin-top: 3rem;
+    font-family: var(--font-mono);
+    font-size: 0.72rem; letter-spacing: 0.2em; text-transform: uppercase;
+    color: var(--ink-faint);
+    display: inline-flex; align-items: center; gap: 0.7rem;
+  }
+  .scrollcue::before { content: ""; width: 34px; height: 1px; background: var(--ink-faint); }
+
+  /* ---------- section heads ---------- */
+  .head { margin-bottom: 3rem; }
+  .head h2 { font-size: clamp(1.7rem, 3.6vw, 2.6rem); max-width: 20ch; margin-bottom: 1rem; }
+  .head p { font-size: 1.08rem; }
+
+  /* ---------- ERA cards ---------- */
+  .eras { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+  .era {
+    background: var(--ground-2);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    padding: 1.8rem;
+    position: relative;
+  }
+  .era::before {
+    content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
+    border-radius: 4px 0 0 4px;
+  }
+  .era.cop::before { background: var(--copilot); }
+  .era.cla::before { background: var(--claude); }
+  .era .tag {
+    font-family: var(--font-mono); font-size: 0.72rem; letter-spacing: 0.14em;
+    text-transform: uppercase; margin-bottom: 0.9rem;
+  }
+  .era.cop .tag { color: var(--copilot); }
+  .era.cla .tag { color: var(--claude); }
+  .era h3 { font-size: 1.2rem; margin-bottom: 0.8rem; }
+  .era p { font-size: 0.96rem; max-width: none; margin-bottom: 0; }
+  .era .when { font-family: var(--font-mono); font-size: 0.8rem; color: var(--ink-faint); margin-bottom: 1.1rem; }
+
+  .handover {
+    margin-top: 1.8rem;
+    background: linear-gradient(90deg, rgba(161,103,15,0.09), rgba(31,122,77,0.09));
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    padding: 1.1rem 1.4rem;
+    font-size: 0.96rem;
+    color: var(--ink-dim);
+    display: flex; gap: 1rem; align-items: baseline;
+  }
+  .handover .date { font-family: var(--font-mono); color: var(--ink); white-space: nowrap; font-size: 0.85rem; }
+
+  /* ---------- VERSION HISTORY ---------- */
+  .vh { display: grid; grid-template-columns: 1fr 1fr; gap: 2.5rem; align-items: start; }
+  .panel-label {
+    font-family: var(--font-mono); font-size: 0.75rem; letter-spacing: 0.14em;
+    text-transform: uppercase; margin-bottom: 0.4rem; display: flex; align-items: center; gap: 0.6rem;
+  }
+  .panel-sub { font-family: var(--font-mono); font-size: 0.78rem; color: var(--ink-faint); margin-bottom: 1.6rem; }
+
+  .folders { display: flex; flex-direction: column; gap: 2px; }
+  .folder {
+    display: grid;
+    grid-template-columns: 1.4rem 8.5rem 1fr auto;
+    align-items: center;
+    gap: 0.7rem;
+    padding: 0.42rem 0.7rem;
+    background: var(--ground-2);
+    border: 1px solid var(--line-soft);
+    border-left: 2px solid var(--copilot-d);
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    position: relative;
+  }
+  .folder .ico { color: var(--copilot); opacity: 0.85; }
+  .folder .ver { color: var(--ink); }
+  .folder .bar { height: 7px; background: var(--copilot-d); border-radius: 2px; }
+  .folder .n { color: var(--ink-faint); font-variant-numeric: tabular-nums; text-align: right; min-width: 3.4rem; }
+  .folder.peak { border-left-color: var(--copilot); }
+  .folder.peak .bar { background: var(--copilot); }
+  .folder.drop { border-left-color: var(--alert); }
+  .folder.drop .bar { background: var(--alert); }
+  .folder.drop .n { color: var(--alert); }
+
+  .annot {
+    display: flex; align-items: center; gap: 0.5rem;
+    font-family: var(--font-mono); font-size: 0.72rem;
+    color: var(--alert); padding: 0.35rem 0.7rem 0.35rem 1.4rem;
+  }
+  .annot.note { color: var(--ink-faint); }
+  .vh-caption { font-size: 0.9rem; color: var(--ink-dim); margin-top: 1.4rem; max-width: none; }
+  .vh-caption strong { color: var(--copilot); }
+
+  .git { position: relative; padding-left: 1.6rem; }
+  .git::before {
+    content: ""; position: absolute; left: 5px; top: 6px; bottom: 6px; width: 2px;
+    background: linear-gradient(var(--claude-d), var(--claude));
+  }
+  .commit { position: relative; padding: 0.32rem 0; font-family: var(--font-mono); font-size: 0.82rem; }
+  .commit::before {
+    content: ""; position: absolute; left: -1.6rem; top: 0.62rem;
+    width: 10px; height: 10px; border-radius: 50%;
+    background: var(--ground-2); border: 2px solid var(--claude);
+  }
+  .commit .hash { color: var(--ink-faint); margin-right: 0.6rem; }
+  .commit .msg { color: var(--ink-dim); }
+  .commit.tag::before { background: var(--claude); }
+  .commit .pill {
+    display: inline-block; font-size: 0.7rem; padding: 0.08rem 0.5rem; border-radius: 10px;
+    background: rgba(74,168,119,0.16); color: var(--claude); border: 1px solid var(--claude-d);
+    margin-left: 0.5rem;
+  }
+  .commit.more { color: var(--ink-faint); }
+  .commit.more::before { border-style: dotted; }
+  .vh-caption.git-cap strong { color: var(--claude); }
+
+  /* ---------- git explainer ---------- */
+  .gitgraph { background: var(--ground-2); border: 1px solid var(--line); border-radius: 6px; padding: 1.4rem; overflow-x: auto; }
+  .gitgraph svg { display: block; width: 100%; min-width: 560px; height: auto; }
+  .gitgraph .gl { font-family: var(--font-mono); fill: var(--ink-faint); font-size: 12px; }
+  .gitgraph .gt { font-family: var(--font-mono); fill: var(--claude); font-size: 12px; }
+  .graph-cap { font-family: var(--font-mono); font-size: 0.76rem; color: var(--ink-faint); margin-top: 0.9rem; }
+  .subhead { font-family: var(--font-mono); font-size: 0.75rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-faint); margin: 2.6rem 0 1.2rem; }
+  .concepts { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 1rem; }
+  .concept { background: var(--ground-2); border: 1px solid var(--line); border-radius: 4px; padding: 1.15rem; }
+  .concept .term { font-family: var(--font-mono); color: var(--claude); font-size: 0.92rem; margin-bottom: 0.55rem; }
+  .concept p { font-size: 0.85rem; margin: 0 0 0.75rem; color: var(--ink-dim); max-width: none; line-height: 1.5; }
+  .concept .vs { font-size: 0.76rem; color: var(--ink-faint); border-top: 1px solid var(--line-soft); padding-top: 0.6rem; line-height: 1.45; }
+  .concept .vs b { color: var(--copilot); font-weight: 600; }
+
+  /* ---------- time saved / loops ---------- */
+  .loops { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+  .loop { background: var(--ground-2); border: 1px solid var(--line); border-radius: 4px; padding: 1.7rem; }
+  .loop.cop { border-top: 3px solid var(--copilot); }
+  .loop.cla { border-top: 3px solid var(--claude); }
+  .loop h3 { font-size: 1.12rem; margin-bottom: 0.9rem; }
+  .steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.65rem; }
+  .steps li { display: grid; grid-template-columns: 1.5rem 1fr; gap: 0.5rem; font-size: 0.93rem; color: var(--ink-dim); line-height: 1.45; }
+  .steps li .g { font-family: var(--font-mono); font-size: 1rem; }
+  .loop.cop .steps li .g { color: var(--copilot); }
+  .loop.cla .steps li .g { color: var(--claude); }
+  .loop .foot { margin-top: 1.3rem; padding-top: 1rem; border-top: 1px solid var(--line-soft); font-size: 0.9rem; color: var(--ink); }
+
+  /* ---------- github backbone ---------- */
+  .banner { background: linear-gradient(135deg, rgba(31,122,77,0.11), rgba(31,122,77,0.02)); border: 1px solid var(--claude-d); border-radius: 6px; padding: clamp(1.8rem, 4vw, 3rem); text-align: center; }
+  .banner .k { font-family: var(--font-mono); font-size: 0.74rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--claude); margin-bottom: 1rem; }
+  .banner h3 { font-size: clamp(1.4rem, 3vw, 2.15rem); max-width: 26ch; margin: 0 auto 1rem; }
+  .banner p { max-width: 54ch; margin: 0 auto; color: var(--ink-dim); }
+  .flow { display: flex; align-items: stretch; gap: 0.5rem; margin-top: 2rem; }
+  .flow .node { flex: 1; background: var(--ground-2); border: 1px solid var(--line); border-radius: 4px; padding: 1rem; text-align: center; }
+  .flow .node .n { font-family: var(--font-mono); font-size: 0.68rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-faint); margin-bottom: 0.45rem; }
+  .flow .node .t { font-size: 0.85rem; color: var(--ink); line-height: 1.4; }
+  .flow .sep { display: flex; align-items: center; color: var(--claude); font-size: 1.1rem; }
+  .caps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
+  .cap { background: var(--ground-2); border: 1px solid var(--line); border-radius: 4px; padding: 1.2rem; }
+  .cap .ct { font-family: var(--font-mono); font-size: 0.85rem; color: var(--ink); margin-bottom: 0.45rem; }
+  .cap p { font-size: 0.83rem; color: var(--ink-dim); margin: 0; max-width: none; line-height: 1.45; }
+  .caps-foot { font-size: 0.95rem; color: var(--ink); margin-top: 1.5rem; max-width: 62ch; }
+
+  /* ---------- SESSIONS ---------- */
+  .sessions { display: flex; flex-direction: column; gap: 1.1rem; }
+  .srow { display: grid; grid-template-columns: 1fr 3rem 15rem; gap: 1rem; align-items: center; }
+  .scard { background: var(--ground-2); border: 1px solid var(--line); border-left: 3px solid var(--copilot); border-radius: 4px; padding: 1.1rem 1.3rem; }
+  .scard .stitle { font-family: var(--font-mono); font-size: 0.74rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--copilot); margin-bottom: 0.5rem; }
+  .scard h3 { font-size: 1.05rem; margin-bottom: 0.5rem; }
+  .scard .ended { font-size: 0.88rem; color: var(--ink-dim); margin: 0; max-width: none; }
+  .scard .ended q { color: var(--ink); font-style: italic; }
+  .arrow { text-align: center; color: var(--ink-faint); font-family: var(--font-mono); font-size: 1.4rem; }
+  .toolchip { background: rgba(31,122,77,0.06); border: 1px solid var(--claude-d); border-radius: 4px; padding: 1rem 1.2rem; }
+  .toolchip .tlabel { font-family: var(--font-mono); font-size: 0.72rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--claude); margin-bottom: 0.4rem; }
+  .toolchip .tname { font-family: var(--font-mono); color: var(--ink); font-size: 0.95rem; }
+  .toolchip .tsub { font-size: 0.8rem; color: var(--ink-faint); margin-top: 0.3rem; }
+
+  /* ---------- PATTERN ---------- */
+  .pattern { background: var(--ground-2); border: 1px solid var(--line); border-radius: 4px; padding: clamp(2rem,4vw,3rem); }
+  .quotes { display: grid; grid-template-columns: repeat(2,1fr); gap: 1.4rem; margin-top: 2rem; }
+  .quote { border-left: 2px solid var(--copilot); padding-left: 1.1rem; }
+  .quote q { display: block; font-size: 1.02rem; color: var(--ink); font-style: italic; margin-bottom: 0.5rem; }
+  .quote cite { font-family: var(--font-mono); font-size: 0.74rem; color: var(--ink-faint); font-style: normal; letter-spacing: 0.06em; }
+
+  /* ---------- SCORECARD ---------- */
+  .scores { display: grid; grid-template-columns: repeat(4,1fr); gap: 1.2rem; }
+  .score { background: var(--ground-2); border: 1px solid var(--line); border-radius: 4px; padding: 1.4rem; text-align: left; }
+  .score .metric { font-family: var(--font-mono); font-size: 0.72rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-faint); margin-bottom: 1rem; }
+  .score .pair { display: flex; flex-direction: column; gap: 0.55rem; }
+  .score .v { display: flex; align-items: baseline; gap: 0.6rem; font-variant-numeric: tabular-nums; }
+  .score .v .big { font-family: var(--font-mono); font-size: 1.5rem; font-weight: 600; }
+  .score .v.cop .big { color: var(--copilot); }
+  .score .v.cla .big { color: var(--claude); }
+  .score .v .who { font-family: var(--font-mono); font-size: 0.68rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-faint); }
+
+  /* ---------- APP TOUR ---------- */
+  .tour-tabs { display: flex; gap: 0.5rem; overflow-x: auto; padding-bottom: 0.5rem; margin-bottom: 1.8rem; }
+  .tour-tab { flex: 0 0 auto; background: var(--ground-2); border: 1px solid var(--line); border-left: 2px solid var(--line); border-radius: 4px; padding: 0.7rem 1rem; text-align: left; cursor: pointer; color: var(--ink-dim); font-family: inherit; transition: border-color .2s, color .2s, background .2s; }
+  .tour-tab:hover { color: var(--ink); }
+  .tour-tab .tt { font-family: var(--font-mono); font-size: 0.9rem; color: inherit; display: block; }
+  .tour-tab .tc { font-family: var(--font-mono); font-size: 0.64rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-faint); margin-top: 0.28rem; display: block; }
+  .tour-tab[aria-selected="true"] { border-left-color: var(--claude); color: var(--ink); background: var(--ground-3); }
+  .tour-tab[aria-selected="true"].wip { border-left-color: var(--copilot); }
+  .tour-tab:focus-visible { outline: 2px solid var(--claude); outline-offset: 2px; }
+  .tour-panel { display: none; grid-template-columns: 1.05fr 1fr; gap: 2.2rem; align-items: center; }
+  .tour-panel.active { display: grid; }
+  .screen { background: var(--ground-3); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+  .screen .bar { display: flex; gap: 0.4rem; padding: 0.6rem 0.8rem; border-bottom: 1px solid var(--line); background: var(--ground-2); }
+  .screen .bar i { width: 9px; height: 9px; border-radius: 50%; background: var(--line); display: inline-block; }
+  .screen .canvas { padding: 1rem 1.1rem; }
+  .screen svg { display: block; width: 100%; height: auto; }
+  .screen .lg { font-family: var(--font-mono); font-size: 8px; }
+  .tinfo h3 { font-size: 1.4rem; margin-bottom: 0.7rem; }
+  .chip { display: inline-block; font-family: var(--font-mono); font-size: 0.66rem; letter-spacing: 0.08em; text-transform: uppercase; padding: 0.22rem 0.6rem; border-radius: 10px; border: 1px solid var(--claude-d); color: var(--claude); background: rgba(31,122,77,0.08); margin-bottom: 1.1rem; }
+  .chip.wip { border-color: var(--copilot-d); color: var(--copilot); background: rgba(161,103,15,0.08); }
+  .tinfo p { max-width: none; }
+  .io { display: flex; gap: 0.7rem; align-items: center; flex-wrap: wrap; font-family: var(--font-mono); font-size: 0.78rem; margin: 1.2rem 0; padding: 0.9rem 1rem; background: var(--ground-3); border: 1px solid var(--line-soft); border-radius: 4px; }
+  .io .lab { color: var(--ink-faint); text-transform: uppercase; letter-spacing: 0.08em; font-size: 0.62rem; }
+  .io .val { color: var(--ink); }
+  .io .ar { color: var(--claude); font-size: 0.95rem; }
+  .who { font-size: 0.9rem; color: var(--ink-dim); margin: 0; }
+  .who b { color: var(--ink); }
+  .tour-note { font-family: var(--font-mono); font-size: 0.76rem; color: var(--ink-faint); margin-top: 1.6rem; }
+
+  .learn { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 1.2rem; }
+  .lgrp { background: var(--ground-2); border: 1px solid var(--line); border-radius: 4px; padding: 1.3rem; }
+  .lgrp h3 { font-family: var(--font-mono); font-size: 0.72rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-faint); margin-bottom: 0.9rem; font-weight: 600; }
+  .lgrp ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.8rem; }
+  .lgrp li { font-size: 0.9rem; line-height: 1.35; }
+  .lgrp li a { font-weight: 600; }
+  .lgrp li .d { display: block; color: var(--ink-faint); font-size: 0.78rem; margin-top: 0.15rem; }
+
+  footer { border-top: 1px solid var(--line-soft); padding: 2.5rem 0 4rem; }
+  footer .wrap { display: flex; justify-content: space-between; gap: 1.5rem; flex-wrap: wrap; }
+  footer p { font-family: var(--font-mono); font-size: 0.72rem; color: var(--ink-faint); max-width: none; margin: 0; letter-spacing: 0.04em; }
+
+  /* ---------- reveal ---------- */
+  .reveal { opacity: 0; transform: translateY(18px); transition: opacity 0.7s ease, transform 0.7s ease; }
+  .reveal.in { opacity: 1; transform: none; }
+
+  /* ---------- responsive ---------- */
+  @media (max-width: 860px) {
+    .eras, .vh, .quotes, .scores, .loops { grid-template-columns: 1fr; }
+    .scores { grid-template-columns: 1fr 1fr; }
+    .caps { grid-template-columns: 1fr; }
+    .srow { grid-template-columns: 1fr; gap: 0.4rem; }
+    .arrow { transform: rotate(90deg); text-align: left; padding-left: 1.2rem; }
+    .folder { grid-template-columns: 1.2rem 6rem 1fr auto; font-size: 0.74rem; }
+    .flow { flex-direction: column; }
+    .flow .sep { justify-content: center; transform: rotate(90deg); }
+    .tour-panel.active { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 520px) {
+    .scores { grid-template-columns: 1fr; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .reveal { opacity: 1; transform: none; transition: none; }
+  }
+</style>
+
+<section id="hero">
+  <canvas id="contours"></canvas>
+  <div class="wrap">
+    <div class="hero-legend reveal">
+      <span><i class="dot a"></i> copilot</span>
+      <span><i class="dot c"></i> claude</span>
+    </div>
+    <p class="eyebrow reveal">SRK Geotechnical Toolkit &nbsp;/&nbsp; how it got built</p>
+    <h1 class="reveal">The same tool, built with <span class="swap">Copilot</span>, then <span class="swap2">Claude</span>.</h1>
+    <p class="standfirst reveal">I'm a geotechnical engineer, not a developer. I built a tool with Copilot first,
+      then rebuilt it with Claude. The clearest difference between the two shows up in how the work got
+      saved and shared — so that's where I'll start.</p>
+    <div class="scrollcue reveal">Scroll to begin</div>
+  </div>
+</section>
+
+<section class="divide">
+  <div class="wrap">
+    <div class="head reveal">
+      <p class="eyebrow">The setup</p>
+      <h2>Two work flows, split by a single date.</h2>
+      <p>Everything before <span class="mono">18 May 2026</span> I did with Copilot. That's the day I started
+        using Claude — and, as it turned out, the first day any of this work was properly saved in version
+        control.</p>
+    </div>
+    <div class="eras">
+      <div class="era cop reveal">
+        <p class="tag">Copilot</p>
+        <p class="when">~7 May → 20 May 2026</p>
+        <h3>A script that ran on my machine</h3>
+        <p>Standalone Streamlit scripts that I nudged along by re-prompting. I shared them by zipping the
+          folder — and when that stopped working, by copying the code across by hand. To run it, someone
+          else had to install Python, tick <em>Add to PATH</em>, run a batch file, and find their own IP
+          address to open it in a browser.</p>
+      </div>
+      <div class="era cla reveal">
+        <p class="tag">Claude</p>
+        <p class="when">19 May 2026 → still going</p>
+        <h3>An app the team installs</h3>
+        <p>One desktop app with five tools and its own copy of Python built in. It installs like any other
+          program, updates itself, and has a feedback button. Nobody needs Python installed. Adding the next
+          tool follows a set process.</p>
+      </div>
+    </div>
+    <div class="handover reveal">
+      <span class="date">18 May</span>
+      <span>I first put the old code into git on the day I started with Claude — as a single
+        <q>working baseline</q>. Everything before that has no history at all. You can watch the way I worked
+        change inside that one folder.</span>
+    </div>
+  </div>
+</section>
+
+<section class="divide">
+  <div class="wrap">
+    <div class="head reveal">
+      <p class="eyebrow">The version history</p>
+      <h2>What "saving a version" meant, each way.</h2>
+      <p>On the left is how I actually saved versions of the pit-wall tool with Copilot: fifteen copies of the
+        whole folder, with the version number typed into the file names. On the right is the same kind of work
+        under Claude.</p>
+    </div>
+
+    <div class="vh">
+      <div class="reveal">
+        <p class="panel-label" style="color:var(--copilot)"><i class="dot a"></i> Copilot — 15 folders</p>
+        <p class="panel-sub">pit_wall_domaining_..._v2 → _v2_3_1_patch &nbsp;·&nbsp; bar = lines in app.py</p>
+        <div class="folders" id="folderchain"></div>
+        <p class="vh-caption">To see what changed between two versions I had to compare the folders myself —
+          the folder name was the only note. And it didn't always move forward:
+          <strong>v2.3.0 hit 407 lines, then v2.3.1 dropped to 241</strong> — a working version I lost by
+          saving over it. The <span class="mono">(1)</span> is a downloaded zip clashing with a copy already
+          on my machine. And once the zips stopped and I was copy-pasting code by hand,
+          <strong>I stopped numbering versions at all</strong> — the last files just have no version on them.</p>
+      </div>
+
+      <div class="reveal">
+        <p class="panel-label" style="color:var(--claude)"><i class="dot c"></i> Claude — git</p>
+        <p class="panel-sub">189 commits &nbsp;·&nbsp; 30 releases &nbsp;·&nbsp; 4 merged branches</p>
+        <div class="git">
+          <div class="commit tag"><span class="hash">7d66e73</span><span class="pill">v2.4.1</span></div>
+          <div class="commit"><span class="hash">4fce995</span><span class="msg">Git-ignore machine-local config</span></div>
+          <div class="commit tag"><span class="hash">9916dc2</span><span class="msg">Bump version</span><span class="pill">v2.4.0</span></div>
+          <div class="commit"><span class="hash">543196e</span><span class="msg">release skill: filter build noise</span></div>
+          <div class="commit tag"><span class="hash">7f21d6e</span><span class="msg">add Cross-Section Creator</span><span class="pill">v2.1.5</span></div>
+          <div class="commit"><span class="hash">2a239b4</span><span class="msg">Remove menu bar, add home nav</span></div>
+          <div class="commit tag"><span class="hash">8305575</span><span class="msg">Initial commit — Electron shell</span><span class="pill">v1.0.4</span></div>
+          <div class="commit more"><span class="hash">···</span><span class="msg">182 more commits, each with a note</span></div>
+        </div>
+        <p class="vh-caption git-cap">Every change is saved with a note, a date, and a way back. I can compare
+          any two points, try something on the side, and fold it back in.
+          <strong>The history is just there</strong> — I never have to piece it back together.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="divide">
+  <div class="wrap">
+    <div class="head reveal">
+      <p class="eyebrow">How git works</p>
+      <h2>What git is, and why it changed things.</h2>
+      <p>I'm not a developer, so here's git the way I'd explain it to another engineer.
+        <a href="https://git-scm.com/" target="_blank" rel="noopener noreferrer">Git</a> is a
+        <a href="https://git-scm.com/book/en/v2/Getting-Started-About-Version-Control" target="_blank" rel="noopener noreferrer">version-control</a>
+        tool — a program that watches a project and records every change, so you can go back to any point,
+        compare versions, and undo anything.
+        <a href="https://docs.github.com/en/get-started/start-your-journey/about-github-and-git" target="_blank" rel="noopener noreferrer">GitHub</a>
+        is the website that keeps a copy of it online and lets people share it.</p>
+      <p>The short version: git saves <em>changes</em>, not copies — and that one idea is what makes
+        everything else work.</p>
+    </div>
+
+    <div class="gitgraph reveal">
+      <svg viewBox="0 0 720 190" role="img" aria-label="A git graph: a main line of commits with a feature branch that merges back, and two tagged releases.">
+        <style>
+          .gl { font-family: var(--font-mono); fill: var(--ink-faint); font-size: 12px; }
+          .gt { font-family: var(--font-mono); fill: var(--claude); font-size: 12px; }
+        </style>
+        <path d="M188,78 C214,78 214,128 240,128 L392,128 C418,128 418,78 444,78" fill="none" stroke="var(--claude-d)" stroke-width="2.5"/>
+        <line x1="48" y1="78" x2="672" y2="78" stroke="var(--claude)" stroke-width="2.5" stroke-linecap="round"/>
+        <text class="gl" x="48" y="64">main</text>
+        <text class="gl" x="250" y="152">branch</text>
+        <text class="gl" x="452" y="70">merge</text>
+        <g>
+          <line x1="188" y1="48" x2="188" y2="70" stroke="var(--claude-d)" stroke-width="1" stroke-dasharray="2 2"/>
+          <rect x="160" y="26" width="56" height="20" rx="4" fill="var(--ground-3)" stroke="var(--claude-d)"/>
+          <text class="gt" x="188" y="40" text-anchor="middle">v2.3.0</text>
+        </g>
+        <g>
+          <line x1="624" y1="48" x2="624" y2="70" stroke="var(--claude-d)" stroke-width="1" stroke-dasharray="2 2"/>
+          <rect x="596" y="26" width="56" height="20" rx="4" fill="var(--ground-3)" stroke="var(--claude-d)"/>
+          <text class="gt" x="624" y="40" text-anchor="middle">v2.4.1</text>
+        </g>
+        <circle cx="108" cy="78" r="6.5" fill="var(--ground-2)" stroke="var(--claude)" stroke-width="3"/>
+        <circle cx="188" cy="78" r="6.5" fill="var(--ground-2)" stroke="var(--claude)" stroke-width="3"/>
+        <circle cx="316" cy="78" r="6.5" fill="var(--ground-2)" stroke="var(--claude)" stroke-width="3"/>
+        <circle cx="444" cy="78" r="6.5" fill="var(--ground-2)" stroke="var(--claude)" stroke-width="3"/>
+        <circle cx="540" cy="78" r="6.5" fill="var(--ground-2)" stroke="var(--claude)" stroke-width="3"/>
+        <circle cx="624" cy="78" r="6.5" fill="var(--ground-2)" stroke="var(--claude)" stroke-width="3"/>
+        <circle cx="264" cy="128" r="6.5" fill="var(--ground-2)" stroke="var(--claude-d)" stroke-width="3"/>
+        <circle cx="352" cy="128" r="6.5" fill="var(--ground-2)" stroke="var(--claude-d)" stroke-width="3"/>
+      </svg>
+      <p class="graph-cap">A main line of saved changes, one change tried on a branch and merged back, with two releases tagged.</p>
+    </div>
+
+    <p class="subhead reveal">On my machine</p>
+    <div class="concepts">
+      <div class="concept reveal"><p class="term">repository</p><p>The project folder, watched by git. It remembers every version of every file.</p><p class="vs"><b>vs</b> a Downloads folder full of copies.</p></div>
+      <div class="concept reveal"><p class="term">commit</p><p>A saved snapshot with a short note and a date.</p><p class="vs"><b>vs a folder</b> whose name is the only note.</p></div>
+      <div class="concept reveal"><p class="term">branch</p><p>A safe copy to try something on, without touching the working version.</p><p class="vs"><b>vs</b> copying the whole folder and hoping.</p></div>
+      <div class="concept reveal"><p class="term">merge</p><p>Fold a finished change back into the main version.</p><p class="vs"><b>vs</b> pasting files across by hand.</p></div>
+      <div class="concept reveal"><p class="term">tag</p><p>Mark a point as a released version, like <span class="mono">v2.4.1</span>.</p><p class="vs"><b>vs</b> <span class="mono">…_v2_3_1_patch</span>.</p></div>
+      <div class="concept reveal"><p class="term">diff &amp; revert</p><p>See exactly what changed between two points, and undo it safely.</p><p class="vs"><b>vs</b> comparing folders by eye; losing 166 lines.</p></div>
+    </div>
+
+    <p class="subhead reveal">With GitHub — the shared copy online</p>
+    <div class="concepts">
+      <div class="concept reveal"><p class="term">clone</p><p>GitHub keeps the main copy online. Cloning pulls a full copy — with all its history — onto your machine.</p><p class="vs"><b>vs</b> emailing the whole folder around.</p></div>
+      <div class="concept reveal"><p class="term"><a href="https://docs.github.com/en/get-started/using-git/pushing-commits-to-a-remote-repository" target="_blank" rel="noopener noreferrer">push</a></p><p>Send my latest commits up to GitHub, so the shared copy has them too.</p><p class="vs"><b>vs</b> no shared copy at all.</p></div>
+      <div class="concept reveal"><p class="term"><a href="https://docs.github.com/en/get-started/using-git/getting-changes-from-a-remote-repository" target="_blank" rel="noopener noreferrer">pull</a></p><p>Bring down changes from GitHub that I don't have yet. It's how two people stay in sync.</p><p class="vs"><b>vs</b> hoping you've got the newest zip.</p></div>
+      <div class="concept reveal"><p class="term"><a href="https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/about-pull-requests" target="_blank" rel="noopener noreferrer">pull request</a></p><p>Propose a batch of changes for review before they go into the main version. People can comment, then it gets merged.</p><p class="vs"><b>vs</b> changes just appearing, unchecked.</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="divide">
+  <div class="wrap">
+    <div class="head reveal">
+      <p class="eyebrow">Four Copilot sessions</p>
+      <h2>The thinking was real, and I kept it.</h2>
+      <p>Copilot wasn't a waste. Over four sessions I worked out the actual geotechnical logic — the kinematic
+        checks, apparent dip, reading the DXF surfaces, finding benches. Each session turned into one of the
+        tools that's in the app now.</p>
+    </div>
+
+    <div class="sessions">
+      <div class="srow reveal">
+        <div class="scard">
+          <p class="stitle">Session 1 · Pit-wall domaining</p>
+          <h3>Bedding vs rock-mass classification</h3>
+          <p class="ended">Ended on: <q>replace the point-based DEM with a true mesh</q> — still to do.</p>
+        </div>
+        <div class="arrow">→</div>
+        <div class="toolchip">
+          <p class="tlabel">Became</p>
+          <p class="tname">failure_analysis</p>
+          <p class="tsub">Slope Stability</p>
+        </div>
+      </div>
+
+      <div class="srow reveal">
+        <div class="scard">
+          <p class="stitle">Session 2 · Geometry check</p>
+          <h3>Bench height &amp; berm width</h3>
+          <p class="ended">Built on the wrong framework (FastAPI); wrong DXF assumptions →
+            <q>the results don't line up with anything.</q></p>
+        </div>
+        <div class="arrow">→</div>
+        <div class="toolchip">
+          <p class="tlabel">Became</p>
+          <p class="tname">geometry_check</p>
+          <p class="tsub">Geometry</p>
+        </div>
+      </div>
+
+      <div class="srow reveal">
+        <div class="scard">
+          <p class="stitle">Session 3 · Geometry check, again</p>
+          <h3>Reading benches from a TIN surface</h3>
+          <p class="ended">Lost time to a broken Python setup; ended on
+            <q>not yet solved: correct toe/crest pairing.</q></p>
+        </div>
+        <div class="arrow">→</div>
+        <div class="toolchip">
+          <p class="tlabel">Fed into</p>
+          <p class="tname">geometry_check</p>
+          <p class="tsub">Geometry</p>
+        </div>
+      </div>
+
+      <div class="srow reveal">
+        <div class="scard">
+          <p class="stitle">Session 4 · Failure analysis</p>
+          <h3>3D search · apparent dip · BoD filtering</h3>
+          <p class="ended">The furthest along — but still ended on <q>the biggest future improvement:
+            point-in-solid classification.</q></p>
+        </div>
+        <div class="arrow">→</div>
+        <div class="toolchip">
+          <p class="tlabel">Became</p>
+          <p class="tname">failure_analysis</p>
+          <p class="tsub">Slope Stability</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="divide">
+  <div class="wrap">
+    <div class="pattern reveal">
+      <p class="eyebrow" style="color:var(--copilot)">The pattern</p>
+      <h2 style="font-size:clamp(1.5rem,3.2vw,2.2rem);max-width:24ch">Every session stopped just short of finished.</h2>
+      <p>I made progress every time, but never quite got there. The tools were always <em>almost</em> done,
+        and a lot of each session went on things that weren't the geotechnical problem at all.</p>
+      <div class="quotes">
+        <div class="quote"><q>Recommended next step: replace the point-based DEM with a true mesh.</q><cite>Session 1</cite></div>
+        <div class="quote"><q>The results don't line up with anything.</q><cite>Session 2</cite></div>
+        <div class="quote"><q>Not yet solved: correct toe/crest pairing.</q><cite>Session 3</cite></div>
+        <div class="quote"><q>The biggest future improvement… point-in-solid classification.</q><cite>Session 4</cite></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="divide">
+  <div class="wrap">
+    <div class="head reveal">
+      <p class="eyebrow">The workflow</p>
+      <h2>The time I get back.</h2>
+      <p>With Copilot the work went back and forth: ask, copy the code out, paste it into a new folder, run it,
+        watch it break, ask again. With Claude it goes forward — and the working version stays safe while it does.</p>
+    </div>
+    <div class="loops">
+      <div class="loop cop reveal">
+        <h3 style="color:var(--copilot)">Backwards and forwards</h3>
+        <ul class="steps">
+          <li><span class="g">&#8635;</span> Re-prompt for each change</li>
+          <li><span class="g">&#8635;</span> Copy the code out by hand</li>
+          <li><span class="g">&#8635;</span> Paste it into a new <span class="mono">vN</span> folder</li>
+          <li><span class="g">&#8635;</span> Re-download the zip — mind the <span class="mono">(1)</span> clashes</li>
+          <li><span class="g">&#8635;</span> Redo wrong turns (FastAPI, the DXF assumptions)</li>
+          <li><span class="g">&#8635;</span> Lose a working version to a bad edit (407 &#8594; 241)</li>
+        </ul>
+        <p class="foot">Every change was a full round trip — and some of them lost ground.</p>
+      </div>
+      <div class="loop cla reveal">
+        <h3 style="color:var(--claude)">Forward, once</h3>
+        <ul class="steps">
+          <li><span class="g">&#8594;</span> I describe the change; it edits the code where it sits</li>
+          <li><span class="g">&#8594;</span> It already has the whole project in front of it</li>
+          <li><span class="g">&#8594;</span> We save it as a commit with a note</li>
+          <li><span class="g">&#8594;</span> Wrong turn? Roll it back — the good version is untouched</li>
+          <li><span class="g">&#8594;</span> Release it when it's ready; the history stays intact</li>
+        </ul>
+        <p class="foot">I stop re-explaining myself and re-doing work — and I don't fear a bad edit.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="divide">
+  <div class="wrap">
+    <div class="head reveal">
+      <p class="eyebrow">Delivery &amp; auto-update</p>
+      <h2>It all runs on GitHub.</h2>
+      <p>The same place that stores the history also ships the app, updates it, and takes feedback.</p>
+    </div>
+
+    <div class="banner reveal">
+      <p class="k">The main thing</p>
+      <h3>I publish once, and everyone's on the latest version next time they open it.</h3>
+      <p>When I put out a new version, GitHub hosts it, the app checks for it on startup, and it updates
+        itself. No emailing files, no reinstalling, no "which version have you got?"</p>
+      <div class="flow">
+        <div class="node"><p class="n">1 · Me</p><p class="t">Publish a new version<br><span class="mono">npm run release</span></p></div>
+        <div class="sep">&#8594;</div>
+        <div class="node"><p class="n">2 · GitHub</p><p class="t">Hosts the signed installer</p></div>
+        <div class="sep">&#8594;</div>
+        <div class="node"><p class="n">3 · The app</p><p class="t">Checks for it on startup</p></div>
+        <div class="sep">&#8594;</div>
+        <div class="node"><p class="n">4 · Engineer</p><p class="t">Updates itself, done</p></div>
+      </div>
+    </div>
+
+    <p class="subhead reveal">Delivery &amp; centralisation</p>
+    <div class="eras">
+      <div class="era cop reveal">
+        <p class="tag">Before — scattered</p>
+        <h3>A copy per person</h3>
+        <p>A zip emailed around, or code copied across by hand, run from wherever each person saved it.
+          Everyone on a different version, and no easy way to tell who had what.</p>
+      </div>
+      <div class="era cla reveal">
+        <p class="tag">Now — one source</p>
+        <h3>One installer, in one place</h3>
+        <p>A single signed installer, shared through
+          <a href="https://docs.github.com/en/repositories/releasing-projects-on-github/about-releases" target="_blank" rel="noopener noreferrer">GitHub releases</a>,
+          with a SharePoint zip as a backup. One version everyone's on.</p>
+      </div>
+    </div>
+
+    <p class="subhead reveal">What GitHub does for the app</p>
+    <div class="caps">
+      <div class="cap reveal"><p class="ct">Version control</p><p>The full history, branches, and a way back from any change.</p></div>
+      <div class="cap reveal"><p class="ct">Releases &amp; downloads</p><p>Every version hosted and ready to download.</p></div>
+      <div class="cap reveal"><p class="ct">Auto-update</p><p>The app reads the releases and updates itself.</p></div>
+      <div class="cap reveal"><p class="ct">Feedback → Issues</p><p>The feedback button files a GitHub issue straight away.</p></div>
+      <div class="cap reveal"><p class="ct">Labels</p><p>Reports get tagged by tool and by type automatically.</p></div>
+      <div class="cap reveal"><p class="ct">Project board</p><p>New issues land on a board on their own.</p></div>
+    </div>
+    <p class="caps-foot reveal">One free service does the version control, the downloads, the auto-updates and
+      the bug reports — all joined up, so feedback can go from the app to a fix to a release without ever
+      leaving GitHub.</p>
+  </div>
+</section>
+
+<section class="divide">
+  <div class="wrap">
+    <div class="head reveal">
+      <p class="eyebrow">By the numbers</p>
+      <h2>The same work, counted two ways.</h2>
+    </div>
+    <div class="scores">
+      <div class="score reveal">
+        <p class="metric">Tracked history</p>
+        <div class="pair">
+          <div class="v cop"><span class="big">13</span><span class="who">Copilot</span></div>
+          <div class="v cla"><span class="big">189</span><span class="who">Claude</span></div>
+        </div>
+        <p style="font-size:0.8rem;color:var(--ink-faint);margin:0.9rem 0 0">commits</p>
+      </div>
+      <div class="score reveal">
+        <p class="metric">Releases</p>
+        <div class="pair">
+          <div class="v cop"><span class="big">0</span><span class="who">Copilot</span></div>
+          <div class="v cla"><span class="big">30</span><span class="who">Claude</span></div>
+        </div>
+        <p style="font-size:0.8rem;color:var(--ink-faint);margin:0.9rem 0 0">tagged versions, v1.0.4 → v2.4.1</p>
+      </div>
+      <div class="score reveal">
+        <p class="metric">Versioning</p>
+        <div class="pair">
+          <div class="v cop"><span class="big">15</span><span class="who">Copilot</span></div>
+          <div class="v cla"><span class="big">git</span><span class="who">Claude</span></div>
+        </div>
+        <p style="font-size:0.8rem;color:var(--ink-faint);margin:0.9rem 0 0">folders copied by hand vs real branches</p>
+      </div>
+      <div class="score reveal">
+        <p class="metric">To install &amp; run</p>
+        <div class="pair">
+          <div class="v cop"><span class="big" style="font-size:0.98rem;line-height:1.3">Install Python,<br>edit PATH, .bat</span></div>
+          <div class="v cla"><span class="big" style="font-size:0.98rem;line-height:1.3">One app that<br>updates itself</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="divide">
+  <div class="wrap">
+    <div class="head reveal">
+      <p class="eyebrow">The app today</p>
+      <h2>What I ended up with.</h2>
+      <p>Here are the tools in the app now. Click through them to see what each one does.</p>
+    </div>
+
+    <div class="reveal">
+      <div class="tour-tabs" role="tablist" aria-label="Toolkit tools">
+        <button class="tour-tab" role="tab" data-tool="failure" aria-selected="true"><span class="tt">Failure Analysis</span><span class="tc">Slope Stability</span></button>
+        <button class="tour-tab" role="tab" data-tool="geometry" aria-selected="false"><span class="tt">Geometry Check</span><span class="tc">Geometry</span></button>
+        <button class="tour-tab" role="tab" data-tool="xsect" aria-selected="false"><span class="tt">Cross-Section Creator</span><span class="tc">Slope Stability</span></button>
+        <button class="tour-tab" role="tab" data-tool="downhole" aria-selected="false"><span class="tt">Downhole Plots</span><span class="tc">Logging</span></button>
+        <button class="tour-tab wip" role="tab" data-tool="compare" aria-selected="false"><span class="tt">Cross-Section Compare</span><span class="tc">In development</span></button>
+      </div>
+
+      <!-- Failure Analysis -->
+      <div class="tour-panel active" role="tabpanel" data-tool="failure">
+        <div class="screen">
+          <div class="bar"><i></i><i></i><i></i></div>
+          <div class="canvas">
+            <svg viewBox="0 0 300 210" role="img" aria-label="Plan view of a pit with faces classified as bedding, rock-mass or no-plane.">
+              <ellipse cx="150" cy="92" rx="132" ry="72" fill="none" stroke="var(--surface)" stroke-width="1.2" opacity=".55"/>
+              <ellipse cx="150" cy="92" rx="100" ry="54" fill="none" stroke="var(--surface)" stroke-width="1.2" opacity=".55"/>
+              <ellipse cx="150" cy="92" rx="68" ry="38" fill="none" stroke="var(--surface)" stroke-width="1.2" opacity=".6"/>
+              <ellipse cx="150" cy="92" rx="38" ry="22" fill="none" stroke="var(--surface)" stroke-width="1.2" opacity=".65"/>
+              <g>
+                <circle cx="92" cy="66" r="3.4" fill="var(--alert)"/><circle cx="205" cy="70" r="3.4" fill="var(--alert)"/>
+                <circle cx="150" cy="48" r="3.4" fill="var(--alert)"/><circle cx="120" cy="128" r="3.4" fill="var(--alert)"/>
+                <circle cx="196" cy="124" r="3.4" fill="var(--alert)"/><circle cx="235" cy="98" r="3.4" fill="var(--alert)"/>
+                <circle cx="70" cy="104" r="3.4" fill="var(--claude)"/><circle cx="228" cy="60" r="3.4" fill="var(--claude)"/>
+                <circle cx="158" cy="138" r="3.4" fill="var(--claude)"/><circle cx="108" cy="92" r="3.4" fill="var(--claude)"/>
+                <circle cx="200" cy="104" r="3.4" fill="var(--claude)"/><circle cx="150" cy="92" r="3.4" fill="var(--claude)"/>
+                <circle cx="58" cy="80" r="3.4" fill="var(--copilot)"/><circle cx="244" cy="128" r="3.4" fill="var(--copilot)"/>
+              </g>
+              <g class="lg">
+                <circle cx="22" cy="197" r="3.2" fill="var(--alert)"/><text x="30" y="200" fill="var(--ink-dim)">bedding</text>
+                <circle cx="112" cy="197" r="3.2" fill="var(--claude)"/><text x="120" y="200" fill="var(--ink-dim)">rock mass</text>
+                <circle cx="212" cy="197" r="3.2" fill="var(--copilot)"/><text x="220" y="200" fill="var(--ink-dim)">no plane</text>
+              </g>
+            </svg>
+          </div>
+        </div>
+        <div class="tinfo">
+          <h3>Failure Analysis</h3>
+          <span class="chip">Slope Stability</span>
+          <p>Matches every pit-wall face to the nearest geological surface in 3D, then classifies it as
+            bedding-controlled, rock-mass, or no valid plane — with apparent-dip reporting and a kinematic check.</p>
+          <div class="io"><span class="lab">In</span><span class="val">pit + geology DXF (± BoD)</span><span class="ar">&#8594;</span><span class="lab">Out</span><span class="val">classified CSV + criteria.txt (ZIP)</span></div>
+          <p class="who"><b>For:</b> assessing structural control on bench and inter-ramp faces.</p>
+        </div>
+      </div>
+
+      <!-- Geometry Check -->
+      <div class="tour-panel" role="tabpanel" data-tool="geometry">
+        <div class="screen">
+          <div class="bar"><i></i><i></i><i></i></div>
+          <div class="canvas">
+            <svg viewBox="0 0 300 200" role="img" aria-label="Bench profile showing bench height and bench width measured from a surface.">
+              <polyline points="34,34 96,34 96,84 168,84 168,134 240,134 240,184" fill="none" stroke="var(--ink-dim)" stroke-width="2.2"/>
+              <line x1="84" y1="34" x2="84" y2="84" stroke="var(--claude)" stroke-width="1"/>
+              <line x1="80" y1="34" x2="88" y2="34" stroke="var(--claude)" stroke-width="1"/>
+              <line x1="80" y1="84" x2="88" y2="84" stroke="var(--claude)" stroke-width="1"/>
+              <text x="60" y="62" fill="var(--claude)" class="lg" font-size="10">BH</text>
+              <line x1="96" y1="98" x2="168" y2="98" stroke="var(--claude)" stroke-width="1"/>
+              <line x1="96" y1="94" x2="96" y2="102" stroke="var(--claude)" stroke-width="1"/>
+              <line x1="168" y1="94" x2="168" y2="102" stroke="var(--claude)" stroke-width="1"/>
+              <text x="120" y="114" fill="var(--claude)" class="lg" font-size="10">BW</text>
+              <text x="196" y="128" fill="var(--ink-faint)" class="lg" font-size="9">face angle</text>
+            </svg>
+          </div>
+        </div>
+        <div class="tinfo">
+          <h3>Geometry Check</h3>
+          <span class="chip">Geometry</span>
+          <p>Reads a triangulated pit surface and measures bench height, bench width (berm) and face angle
+            straight from the geometry — no Vulcan strings, no Excel workflow.</p>
+          <div class="io"><span class="lab">In</span><span class="val">pit surface DXF (TIN)</span><span class="ar">&#8594;</span><span class="lab">Out</span><span class="val">per-bench BH / BW / face-angle CSV</span></div>
+          <p class="who"><b>For:</b> checking a pit design against its geometry criteria.</p>
+        </div>
+      </div>
+
+      <!-- Cross-Section Creator -->
+      <div class="tour-panel" role="tabpanel" data-tool="xsect">
+        <div class="screen">
+          <div class="bar"><i></i><i></i><i></i></div>
+          <div class="canvas">
+            <svg viewBox="0 0 300 200" role="img" aria-label="A section line cut through a pit plan, producing a 2D profile.">
+              <ellipse cx="150" cy="58" rx="120" ry="40" fill="none" stroke="var(--surface)" stroke-width="1.2" opacity=".6"/>
+              <ellipse cx="150" cy="58" rx="78" ry="24" fill="none" stroke="var(--surface)" stroke-width="1.2" opacity=".6"/>
+              <line x1="24" y1="58" x2="276" y2="58" stroke="var(--alert)" stroke-width="1.6" stroke-dasharray="5 3"/>
+              <text x="16" y="61" fill="var(--alert)" class="lg" font-size="10">A</text>
+              <text x="280" y="61" fill="var(--alert)" class="lg" font-size="10">A'</text>
+              <text x="30" y="118" fill="var(--ink-faint)" class="lg" font-size="9">extracted section</text>
+              <polyline points="34,178 84,178 116,146 168,146 200,182 266,182" fill="none" stroke="var(--claude)" stroke-width="2.2"/>
+            </svg>
+          </div>
+        </div>
+        <div class="tinfo">
+          <h3>Cross-Section Creator</h3>
+          <span class="chip">Slope Stability</span>
+          <p>Cuts 2D cross-sections through Leapfrog surface meshes along the lines I choose, and exports them
+            ready to drop straight into Slide2.</p>
+          <div class="io"><span class="lab">In</span><span class="val">surface meshes + section lines</span><span class="ar">&#8594;</span><span class="lab">Out</span><span class="val">Slide2-ready section DXFs</span></div>
+          <p class="who"><b>For:</b> setting up limit-equilibrium stability sections.</p>
+        </div>
+      </div>
+
+      <!-- Downhole Plots -->
+      <div class="tour-panel" role="tabpanel" data-tool="downhole">
+        <div class="screen">
+          <div class="bar"><i></i><i></i><i></i></div>
+          <div class="canvas">
+            <svg viewBox="0 0 300 200" role="img" aria-label="A multi-track downhole log with lithology, weathering and velocity tracks.">
+              <line x1="34" y1="16" x2="34" y2="188" stroke="var(--line)" stroke-width="1"/>
+              <text x="6" y="20" fill="var(--ink-faint)" class="lg">0</text>
+              <text x="2" y="104" fill="var(--ink-faint)" class="lg">50</text>
+              <text x="0" y="188" fill="var(--ink-faint)" class="lg">100</text>
+              <text x="44" y="12" fill="var(--ink-faint)" class="lg">Lith</text>
+              <text x="104" y="12" fill="var(--ink-faint)" class="lg">Weath</text>
+              <text x="176" y="12" fill="var(--ink-faint)" class="lg">Vp</text>
+              <g opacity=".85">
+                <rect x="44" y="16" width="46" height="40" fill="var(--surface)" opacity=".55"/>
+                <rect x="44" y="56" width="46" height="52" fill="var(--copilot)" opacity=".5"/>
+                <rect x="44" y="108" width="46" height="30" fill="var(--claude)" opacity=".5"/>
+                <rect x="44" y="138" width="46" height="50" fill="var(--surface)" opacity=".7"/>
+              </g>
+              <g opacity=".85">
+                <rect x="104" y="16" width="46" height="64" fill="var(--copilot)" opacity=".6"/>
+                <rect x="104" y="80" width="46" height="44" fill="var(--copilot)" opacity=".38"/>
+                <rect x="104" y="124" width="46" height="64" fill="var(--surface)" opacity=".55"/>
+              </g>
+              <polyline points="168,30 200,58 184,86 214,110 196,140 224,170" fill="none" stroke="var(--claude)" stroke-width="1.8"/>
+            </svg>
+          </div>
+        </div>
+        <div class="tinfo">
+          <h3>Downhole Plots</h3>
+          <span class="chip">Logging</span>
+          <p>Builds multi-track downhole logs — lithology, weathering, FES, velocity — from borehole sample
+            data, all lined up on one depth axis.</p>
+          <div class="io"><span class="lab">In</span><span class="val">borehole sample data</span><span class="ar">&#8594;</span><span class="lab">Out</span><span class="val">multi-track log figure</span></div>
+          <p class="who"><b>For:</b> reviewing drillhole data.</p>
+        </div>
+      </div>
+
+      <!-- Cross-Section Compare -->
+      <div class="tour-panel" role="tabpanel" data-tool="compare">
+        <div class="screen">
+          <div class="bar"><i></i><i></i><i></i></div>
+          <div class="canvas">
+            <svg viewBox="0 0 300 200" role="img" aria-label="Two cross-section profiles overlaid, current versus previous.">
+              <polyline points="30,120 82,116 122,86 172,90 214,132 288,128" fill="none" stroke="var(--surface)" stroke-width="1.8" stroke-dasharray="5 3" opacity=".85"/>
+              <polyline points="30,124 82,120 122,74 172,80 214,120 288,118" fill="none" stroke="var(--claude)" stroke-width="2.2"/>
+              <g class="lg">
+                <line x1="30" y1="184" x2="50" y2="184" stroke="var(--claude)" stroke-width="2.2"/><text x="56" y="187" fill="var(--ink-dim)">current</text>
+                <line x1="140" y1="184" x2="160" y2="184" stroke="var(--surface)" stroke-width="1.8" stroke-dasharray="5 3"/><text x="166" y="187" fill="var(--ink-dim)">previous</text>
+              </g>
+            </svg>
+          </div>
+        </div>
+        <div class="tinfo">
+          <h3>Cross-Section Compare</h3>
+          <span class="chip wip">In development &amp; testing</span>
+          <p>Overlays current versus previous DXF surfaces — model and pit — on raw cross-section previews, so
+            I can see how a design has moved between iterations.</p>
+          <div class="io"><span class="lab">In</span><span class="val">current + previous DXFs</span><span class="ar">&#8594;</span><span class="lab">Out</span><span class="val">overlaid section previews</span></div>
+          <p class="who"><b>For:</b> checking how a surface has moved between model iterations.</p>
+        </div>
+      </div>
+
+      <p class="tour-note">Sketches for now — real screenshots to follow.</p>
+    </div>
+  </div>
+</section>
+
+<section class="divide">
+  <div class="wrap">
+    <div class="head reveal">
+      <p class="eyebrow">Learn more</p>
+      <h2>How git and GitHub work — the official guides.</h2>
+      <p>Plain explanations for anyone who wants to follow up. All from the official docs.</p>
+    </div>
+    <div class="learn">
+      <div class="lgrp reveal">
+        <h3>Start here</h3>
+        <ul>
+          <li><a href="https://docs.github.com/en/get-started/start-your-journey/about-github-and-git" target="_blank" rel="noopener noreferrer">What is GitHub?</a><span class="d">Git and GitHub in one page</span></li>
+          <li><a href="https://docs.github.com/en/get-started/using-git/about-git" target="_blank" rel="noopener noreferrer">About Git</a><span class="d">What git is and why it's used</span></li>
+        </ul>
+      </div>
+      <div class="lgrp reveal">
+        <h3>How git works</h3>
+        <ul>
+          <li><a href="https://git-scm.com/book/en/v2/Getting-Started-About-Version-Control" target="_blank" rel="noopener noreferrer">About Version Control</a><span class="d">The core idea, in one page</span></li>
+          <li><a href="https://git-scm.com/" target="_blank" rel="noopener noreferrer">git-scm.com</a><span class="d">The official Git site</span></li>
+        </ul>
+      </div>
+      <div class="lgrp reveal">
+        <h3>Working with GitHub</h3>
+        <ul>
+          <li><a href="https://docs.github.com/en/get-started/using-git/pushing-commits-to-a-remote-repository" target="_blank" rel="noopener noreferrer">Pushing commits</a><span class="d">push</span></li>
+          <li><a href="https://docs.github.com/en/get-started/using-git/getting-changes-from-a-remote-repository" target="_blank" rel="noopener noreferrer">Getting changes</a><span class="d">pull / fetch</span></li>
+          <li><a href="https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/about-pull-requests" target="_blank" rel="noopener noreferrer">About pull requests</a><span class="d">proposing &amp; reviewing changes</span></li>
+          <li><a href="https://docs.github.com/en/repositories/releasing-projects-on-github/about-releases" target="_blank" rel="noopener noreferrer">About releases</a><span class="d">how the app ships &amp; auto-updates</span></li>
+        </ul>
+      </div>
+      <div class="lgrp reveal">
+        <h3>Hands-on</h3>
+        <ul>
+          <li><a href="https://skills.github.com/" target="_blank" rel="noopener noreferrer">GitHub Skills</a><span class="d">Short interactive courses</span></li>
+          <li><a href="https://docs.github.com/" target="_blank" rel="noopener noreferrer">GitHub Docs</a><span class="d">Everything else</span></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <p>Built from the git history of both projects, 15 saved version folders, and my four Copilot session notes.</p>
+    <p>Figures checked 9 Jul 2026.</p>
+  </div>
+</footer>
+
+<script>
+(function () {
+  var reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  /* ---- folder chain (real line counts) ---- */
+  var data = [
+    ["v1 (pilot)", 272, ""], ["v2", 292, ""], ["v2.1", 264, ""], ["v2.2", 257, ""],
+    ["v2.2.1", 258, ""], ["v2.2.2", 325, ""], ["v2.2.3", 338, ""], ["v2.2.4", 364, ""],
+    ["v2.2.5", 345, ""], ["v2.2.6", 339, ""], ["v2.2.7", 344, ""], ["v2.2.8", 353, ""],
+    ["v2.3.0 (1)", 407, "peak"], ["v2.3.1", 241, "drop"], ["v2.3.1_patch", 235, "drop"]
+  ];
+  var max = 407, host = document.getElementById("folderchain");
+  data.forEach(function (d, i) {
+    var row = document.createElement("div");
+    row.className = "folder" + (d[2] ? " " + d[2] : "");
+    var w = Math.round((d[1] / max) * 100);
+    row.innerHTML =
+      '<span class="ico">&#128193;</span>' +
+      '<span class="ver">' + d[0] + '</span>' +
+      '<span class="bar" style="width:' + w + '%"></span>' +
+      '<span class="n">' + d[1] + '</span>';
+    host.appendChild(row);
+    if (d[0].indexOf("(1)") > -1) {
+      var a = document.createElement("div");
+      a.className = "annot note";
+      a.innerHTML = "&#8627; re-downloaded zip, clashed with an existing copy";
+      host.appendChild(a);
+    }
+    if (d[2] === "drop" && data[i-1] && data[i-1][2] === "peak") {
+      var b = document.createElement("div");
+      b.className = "annot";
+      b.innerHTML = "&#9660; 166 lines lost &mdash; a working version overwritten";
+      host.appendChild(b);
+    }
+  });
+  var end = document.createElement("div");
+  end.className = "annot note";
+  end.innerHTML = "&#8627; after this the zips stopped &mdash; I copied code by hand and stopped numbering";
+  host.appendChild(end);
+
+  /* ---- reveal on scroll ---- */
+  var items = document.querySelectorAll(".reveal");
+  if (reduce || !("IntersectionObserver" in window)) {
+    items.forEach(function (el) { el.classList.add("in"); });
+  } else {
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) {
+        if (e.isIntersecting) { e.target.classList.add("in"); io.unobserve(e.target); }
+      });
+    }, { threshold: 0.12 });
+    items.forEach(function (el) { io.observe(el); });
+  }
+
+  /* ---- hero contour field (DEM motif) ---- */
+  var cv = document.getElementById("contours"), ctx = cv.getContext("2d"), t = 0, raf;
+  function size() {
+    var r = cv.getBoundingClientRect();
+    cv.width = r.width * (window.devicePixelRatio || 1);
+    cv.height = r.height * (window.devicePixelRatio || 1);
+    ctx.setTransform(window.devicePixelRatio || 1, 0, 0, window.devicePixelRatio || 1, 0, 0);
+  }
+  size();
+  window.addEventListener("resize", size);
+  function draw() {
+    var w = cv.width / (window.devicePixelRatio || 1), h = cv.height / (window.devicePixelRatio || 1);
+    ctx.clearRect(0, 0, w, h);
+    var lines = 26;
+    for (var l = 0; l < lines; l++) {
+      var frac = l / lines;
+      ctx.beginPath();
+      ctx.strokeStyle = "rgba(" + (70 - Math.round(frac * 30)) + "," + (95 + Math.round(frac * 25)) + ",80,0.13)";
+      ctx.lineWidth = 1;
+      for (var x = 0; x <= w; x += 6) {
+        var y = h * frac
+          + Math.sin(x * 0.006 + t + l * 0.35) * 26
+          + Math.sin(x * 0.0016 - t * 0.6 + l) * 42;
+        if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+    }
+  }
+  function loop() { t += 0.004; draw(); raf = requestAnimationFrame(loop); }
+  if (reduce) { draw(); }
+  else {
+    loop();
+    document.addEventListener("visibilitychange", function () {
+      if (document.hidden) { cancelAnimationFrame(raf); }
+      else { loop(); }
+    });
+  }
+})();
+
+/* ---- interactive app tour: tab switching ---- */
+(function () {
+  var tabs = Array.prototype.slice.call(document.querySelectorAll(".tour-tab"));
+  var panels = Array.prototype.slice.call(document.querySelectorAll(".tour-panel"));
+  if (!tabs.length) return;
+  function show(id) {
+    tabs.forEach(function (t) { t.setAttribute("aria-selected", t.dataset.tool === id ? "true" : "false"); });
+    panels.forEach(function (p) { p.classList.toggle("active", p.dataset.tool === id); });
+  }
+  tabs.forEach(function (t) {
+    t.addEventListener("click", function () { show(t.dataset.tool); });
+    t.addEventListener("keydown", function (e) {
+      var i = tabs.indexOf(t), n = tabs.length, j = null;
+      if (e.key === "ArrowRight" || e.key === "ArrowDown") j = (i + 1) % n;
+      if (e.key === "ArrowLeft" || e.key === "ArrowUp") j = (i - 1 + n) % n;
+      if (j !== null) { e.preventDefault(); tabs[j].focus(); show(tabs[j].dataset.tool); }
+    });
+  });
+})();
+</script>
+</body>
+</html>

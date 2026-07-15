@@ -424,118 +424,6 @@
 <section class="divide">
   <div class="wrap">
     <div class="head reveal">
-      <p class="eyebrow">The version history</p>
-      <h2>What "saving a version" meant, each way.</h2>
-      <p>On the left is how I actually saved versions of the pit-wall tool with Copilot: fifteen copies of the
-        whole folder, with the version number typed into the file names. On the right is the same kind of work
-        under Claude.</p>
-    </div>
-
-    <div class="vh">
-      <div class="reveal">
-        <p class="panel-label" style="color:var(--copilot)"><i class="dot a"></i> Copilot — 15 folders</p>
-        <p class="panel-sub">pit_wall_domaining_..._v2 → _v2_3_1_patch &nbsp;·&nbsp; bar = lines in app.py</p>
-        <div class="folders" id="folderchain"></div>
-        <p class="vh-caption">To see what changed between two versions I had to compare the folders myself —
-          the folder name was the only note. And it didn't always move forward:
-          <strong>v2.3.0 hit 407 lines, then v2.3.1 dropped to 241</strong> — a working version I lost by
-          saving over it. The <span class="mono">(1)</span> is a downloaded zip clashing with a copy already
-          on my machine. And once the zips stopped and I was copy-pasting code by hand,
-          <strong>I stopped numbering versions at all</strong> — the last files just have no version on them.</p>
-      </div>
-
-      <div class="reveal">
-        <p class="panel-label" style="color:var(--claude)"><i class="dot c"></i> Claude — git</p>
-        <p class="panel-sub">189 commits &nbsp;·&nbsp; 30 releases &nbsp;·&nbsp; 4 merged branches</p>
-        <div class="git">
-          <div class="commit tag"><span class="hash">7d66e73</span><span class="pill">v2.4.1</span></div>
-          <div class="commit"><span class="hash">4fce995</span><span class="msg">Git-ignore machine-local config</span></div>
-          <div class="commit tag"><span class="hash">9916dc2</span><span class="msg">Bump version</span><span class="pill">v2.4.0</span></div>
-          <div class="commit"><span class="hash">543196e</span><span class="msg">release skill: filter build noise</span></div>
-          <div class="commit tag"><span class="hash">7f21d6e</span><span class="msg">add Cross-Section Creator</span><span class="pill">v2.1.5</span></div>
-          <div class="commit"><span class="hash">2a239b4</span><span class="msg">Remove menu bar, add home nav</span></div>
-          <div class="commit tag"><span class="hash">8305575</span><span class="msg">Initial commit — Electron shell</span><span class="pill">v1.0.4</span></div>
-          <div class="commit more"><span class="hash">···</span><span class="msg">182 more commits, each with a note</span></div>
-        </div>
-        <p class="vh-caption git-cap">Every change is saved with a note, a date, and a way back. I can compare
-          any two points, try something on the side, and fold it back in.
-          <strong>The history is just there</strong> — I never have to piece it back together.</p>
-      </div>
-    </div>
-  </div>
-</section>
-
-<section class="divide">
-  <div class="wrap">
-    <div class="head reveal">
-      <p class="eyebrow">How git works</p>
-      <h2>What git is, and why it changed things.</h2>
-      <p>I'm not a developer, so here's git the way I'd explain it to someone else.
-        <a href="https://git-scm.com/" target="_blank" rel="noopener noreferrer">Git</a> is a
-        <a href="https://git-scm.com/book/en/v2/Getting-Started-About-Version-Control" target="_blank" rel="noopener noreferrer">version-control</a>
-        tool — a program that watches a project and records every change, so you can go back to any point,
-        compare versions, and undo anything.
-        <a href="https://docs.github.com/en/get-started/start-your-journey/about-github-and-git" target="_blank" rel="noopener noreferrer">GitHub</a>
-        is the website that keeps a copy of it online and lets people share it.</p>
-      <p>The short version: git saves <em>changes</em>, not copies.</p>
-    </div>
-
-    <div class="gitgraph reveal">
-      <svg viewBox="0 0 720 190" role="img" aria-label="A git graph: a main line of commits with a feature branch that merges back, and two tagged releases.">
-        <style>
-          .gl { font-family: var(--font-mono); fill: var(--ink-faint); font-size: 12px; }
-          .gt { font-family: var(--font-mono); fill: var(--claude); font-size: 12px; }
-        </style>
-        <path d="M188,78 C214,78 214,128 240,128 L392,128 C418,128 418,78 444,78" fill="none" stroke="var(--claude-d)" stroke-width="2.5"/>
-        <line x1="48" y1="78" x2="672" y2="78" stroke="var(--claude)" stroke-width="2.5" stroke-linecap="round"/>
-        <text class="gl" x="48" y="64">main</text>
-        <text class="gl" x="250" y="152">branch</text>
-        <text class="gl" x="452" y="70">merge</text>
-        <g>
-          <line x1="188" y1="48" x2="188" y2="70" stroke="var(--claude-d)" stroke-width="1" stroke-dasharray="2 2"/>
-          <rect x="160" y="26" width="56" height="20" rx="4" fill="var(--ground-3)" stroke="var(--claude-d)"/>
-          <text class="gt" x="188" y="40" text-anchor="middle">v2.3.0</text>
-        </g>
-        <g>
-          <line x1="624" y1="48" x2="624" y2="70" stroke="var(--claude-d)" stroke-width="1" stroke-dasharray="2 2"/>
-          <rect x="596" y="26" width="56" height="20" rx="4" fill="var(--ground-3)" stroke="var(--claude-d)"/>
-          <text class="gt" x="624" y="40" text-anchor="middle">v2.4.1</text>
-        </g>
-        <circle cx="108" cy="78" r="6.5" fill="var(--ground-2)" stroke="var(--claude)" stroke-width="3"/>
-        <circle cx="188" cy="78" r="6.5" fill="var(--ground-2)" stroke="var(--claude)" stroke-width="3"/>
-        <circle cx="316" cy="78" r="6.5" fill="var(--ground-2)" stroke="var(--claude)" stroke-width="3"/>
-        <circle cx="444" cy="78" r="6.5" fill="var(--ground-2)" stroke="var(--claude)" stroke-width="3"/>
-        <circle cx="540" cy="78" r="6.5" fill="var(--ground-2)" stroke="var(--claude)" stroke-width="3"/>
-        <circle cx="624" cy="78" r="6.5" fill="var(--ground-2)" stroke="var(--claude)" stroke-width="3"/>
-        <circle cx="264" cy="128" r="6.5" fill="var(--ground-2)" stroke="var(--claude-d)" stroke-width="3"/>
-        <circle cx="352" cy="128" r="6.5" fill="var(--ground-2)" stroke="var(--claude-d)" stroke-width="3"/>
-      </svg>
-      <p class="graph-cap">A main line of saved changes, one change tried on a branch and merged back, with two releases tagged.</p>
-    </div>
-
-    <p class="subhead reveal">On my machine</p>
-    <div class="concepts">
-      <div class="concept reveal"><p class="term">repository</p><p>The project folder, watched by git. It remembers every version of every file.</p><p class="vs"><b>vs</b> a Downloads folder full of copies.</p></div>
-      <div class="concept reveal"><p class="term">commit</p><p>A saved snapshot with a short note and a date.</p><p class="vs"><b>vs a folder</b> whose name is the only note.</p></div>
-      <div class="concept reveal"><p class="term">branch</p><p>A safe copy to try something on, without touching the working version.</p><p class="vs"><b>vs</b> copying the whole folder and hoping.</p></div>
-      <div class="concept reveal"><p class="term">merge</p><p>Fold a finished change back into the main version.</p><p class="vs"><b>vs</b> pasting files across by hand.</p></div>
-      <div class="concept reveal"><p class="term">tag</p><p>Mark a point as a released version, like <span class="mono">v2.4.1</span>.</p><p class="vs"><b>vs</b> <span class="mono">…_v2_3_1_patch</span>.</p></div>
-      <div class="concept reveal"><p class="term">diff &amp; revert</p><p>See exactly what changed between two points, and undo it safely.</p><p class="vs"><b>vs</b> comparing folders by eye; losing 166 lines.</p></div>
-    </div>
-
-    <p class="subhead reveal">With GitHub — the shared copy online</p>
-    <div class="concepts">
-      <div class="concept reveal"><p class="term">clone</p><p>GitHub keeps the main copy online. Cloning pulls a full copy — with all its history — onto your machine.</p><p class="vs"><b>vs</b> emailing the whole folder around.</p></div>
-      <div class="concept reveal"><p class="term"><a href="https://docs.github.com/en/get-started/using-git/pushing-commits-to-a-remote-repository" target="_blank" rel="noopener noreferrer">push</a></p><p>Send my latest commits up to GitHub, so the shared copy has them too.</p><p class="vs"><b>vs</b> no shared copy at all.</p></div>
-      <div class="concept reveal"><p class="term"><a href="https://docs.github.com/en/get-started/using-git/getting-changes-from-a-remote-repository" target="_blank" rel="noopener noreferrer">pull</a></p><p>Bring down changes from GitHub that I don't have yet. It's how two people stay in sync.</p><p class="vs"><b>vs</b> hoping you've got the newest zip.</p></div>
-      <div class="concept reveal"><p class="term"><a href="https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/about-pull-requests" target="_blank" rel="noopener noreferrer">pull request</a></p><p>Propose a batch of changes for review before they go into the main version. People can comment, then it gets merged.</p><p class="vs"><b>vs</b> changes just appearing, unchecked.</p></div>
-    </div>
-  </div>
-</section>
-
-<section class="divide">
-  <div class="wrap">
-    <div class="head reveal">
       <p class="eyebrow">Four Copilot sessions</p>
       <h2>The thinking was real, and I kept it.</h2>
       <p>Copilot wasn't a waste. Over four sessions I worked out the actual geotechnical logic — the kinematic
@@ -655,6 +543,118 @@
         </ul>
         <p class="foot">I stop re-explaining myself and re-doing work.</p>
       </div>
+    </div>
+  </div>
+</section>
+
+<section class="divide">
+  <div class="wrap">
+    <div class="head reveal">
+      <p class="eyebrow">The version history</p>
+      <h2>What "saving a version" meant, each way.</h2>
+      <p>On the left is how I actually saved versions of the pit-wall tool with Copilot: fifteen copies of the
+        whole folder, with the version number typed into the file names. On the right is the same kind of work
+        under Claude.</p>
+    </div>
+
+    <div class="vh">
+      <div class="reveal">
+        <p class="panel-label" style="color:var(--copilot)"><i class="dot a"></i> Copilot — 15 folders</p>
+        <p class="panel-sub">pit_wall_domaining_..._v2 → _v2_3_1_patch &nbsp;·&nbsp; bar = lines in app.py</p>
+        <div class="folders" id="folderchain"></div>
+        <p class="vh-caption">To see what changed between two versions I had to compare the folders myself —
+          the folder name was the only note. And it didn't always move forward:
+          <strong>v2.3.0 hit 407 lines, then v2.3.1 dropped to 241</strong> — a working version I lost by
+          saving over it. The <span class="mono">(1)</span> is a downloaded zip clashing with a copy already
+          on my machine. And once the zips stopped and I was copy-pasting code by hand,
+          <strong>I stopped numbering versions at all</strong> — the last files just have no version on them.</p>
+      </div>
+
+      <div class="reveal">
+        <p class="panel-label" style="color:var(--claude)"><i class="dot c"></i> Claude — git</p>
+        <p class="panel-sub">189 commits &nbsp;·&nbsp; 30 releases &nbsp;·&nbsp; 4 merged branches</p>
+        <div class="git">
+          <div class="commit tag"><span class="hash">7d66e73</span><span class="pill">v2.4.1</span></div>
+          <div class="commit"><span class="hash">4fce995</span><span class="msg">Git-ignore machine-local config</span></div>
+          <div class="commit tag"><span class="hash">9916dc2</span><span class="msg">Bump version</span><span class="pill">v2.4.0</span></div>
+          <div class="commit"><span class="hash">543196e</span><span class="msg">release skill: filter build noise</span></div>
+          <div class="commit tag"><span class="hash">7f21d6e</span><span class="msg">add Cross-Section Creator</span><span class="pill">v2.1.5</span></div>
+          <div class="commit"><span class="hash">2a239b4</span><span class="msg">Remove menu bar, add home nav</span></div>
+          <div class="commit tag"><span class="hash">8305575</span><span class="msg">Initial commit — Electron shell</span><span class="pill">v1.0.4</span></div>
+          <div class="commit more"><span class="hash">···</span><span class="msg">182 more commits, each with a note</span></div>
+        </div>
+        <p class="vh-caption git-cap">Every change is saved with a note, a date, and a way back. I can compare
+          any two points, try something on the side, and fold it back in.
+          <strong>The history is just there</strong> — I never have to piece it back together.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="divide">
+  <div class="wrap">
+    <div class="head reveal">
+      <p class="eyebrow">How git works</p>
+      <h2>What git is, and why it changed things.</h2>
+      <p>I'm not a developer, so here's git the way I'd explain it to someone else.
+        <a href="https://git-scm.com/" target="_blank" rel="noopener noreferrer">Git</a> is a
+        <a href="https://git-scm.com/book/en/v2/Getting-Started-About-Version-Control" target="_blank" rel="noopener noreferrer">version-control</a>
+        tool — a program that watches a project and records every change, so you can go back to any point,
+        compare versions, and undo anything.
+        <a href="https://docs.github.com/en/get-started/start-your-journey/about-github-and-git" target="_blank" rel="noopener noreferrer">GitHub</a>
+        is the website that keeps a copy of it online and lets people share it.</p>
+      <p>The short version: git saves <em>changes</em>, not copies.</p>
+    </div>
+
+    <div class="gitgraph reveal">
+      <svg viewBox="0 0 720 190" role="img" aria-label="A git graph: a main line of commits with a feature branch that merges back, and two tagged releases.">
+        <style>
+          .gl { font-family: var(--font-mono); fill: var(--ink-faint); font-size: 12px; }
+          .gt { font-family: var(--font-mono); fill: var(--claude); font-size: 12px; }
+        </style>
+        <path d="M188,78 C214,78 214,128 240,128 L392,128 C418,128 418,78 444,78" fill="none" stroke="var(--claude-d)" stroke-width="2.5"/>
+        <line x1="48" y1="78" x2="672" y2="78" stroke="var(--claude)" stroke-width="2.5" stroke-linecap="round"/>
+        <text class="gl" x="48" y="64">main</text>
+        <text class="gl" x="250" y="152">branch</text>
+        <text class="gl" x="452" y="70">merge</text>
+        <g>
+          <line x1="188" y1="48" x2="188" y2="70" stroke="var(--claude-d)" stroke-width="1" stroke-dasharray="2 2"/>
+          <rect x="160" y="26" width="56" height="20" rx="4" fill="var(--ground-3)" stroke="var(--claude-d)"/>
+          <text class="gt" x="188" y="40" text-anchor="middle">v2.3.0</text>
+        </g>
+        <g>
+          <line x1="624" y1="48" x2="624" y2="70" stroke="var(--claude-d)" stroke-width="1" stroke-dasharray="2 2"/>
+          <rect x="596" y="26" width="56" height="20" rx="4" fill="var(--ground-3)" stroke="var(--claude-d)"/>
+          <text class="gt" x="624" y="40" text-anchor="middle">v2.4.1</text>
+        </g>
+        <circle cx="108" cy="78" r="6.5" fill="var(--ground-2)" stroke="var(--claude)" stroke-width="3"/>
+        <circle cx="188" cy="78" r="6.5" fill="var(--ground-2)" stroke="var(--claude)" stroke-width="3"/>
+        <circle cx="316" cy="78" r="6.5" fill="var(--ground-2)" stroke="var(--claude)" stroke-width="3"/>
+        <circle cx="444" cy="78" r="6.5" fill="var(--ground-2)" stroke="var(--claude)" stroke-width="3"/>
+        <circle cx="540" cy="78" r="6.5" fill="var(--ground-2)" stroke="var(--claude)" stroke-width="3"/>
+        <circle cx="624" cy="78" r="6.5" fill="var(--ground-2)" stroke="var(--claude)" stroke-width="3"/>
+        <circle cx="264" cy="128" r="6.5" fill="var(--ground-2)" stroke="var(--claude-d)" stroke-width="3"/>
+        <circle cx="352" cy="128" r="6.5" fill="var(--ground-2)" stroke="var(--claude-d)" stroke-width="3"/>
+      </svg>
+      <p class="graph-cap">A main line of saved changes, one change tried on a branch and merged back, with two releases tagged.</p>
+    </div>
+
+    <p class="subhead reveal">On my machine</p>
+    <div class="concepts">
+      <div class="concept reveal"><p class="term">repository</p><p>The project folder, watched by git. It remembers every version of every file.</p><p class="vs"><b>vs</b> a Downloads folder full of copies.</p></div>
+      <div class="concept reveal"><p class="term">commit</p><p>A saved snapshot with a short note and a date.</p><p class="vs"><b>vs a folder</b> whose name is the only note.</p></div>
+      <div class="concept reveal"><p class="term">branch</p><p>A safe copy to try something on, without touching the working version.</p><p class="vs"><b>vs</b> copying the whole folder and hoping.</p></div>
+      <div class="concept reveal"><p class="term">merge</p><p>Fold a finished change back into the main version.</p><p class="vs"><b>vs</b> pasting files across by hand.</p></div>
+      <div class="concept reveal"><p class="term">tag</p><p>Mark a point as a released version, like <span class="mono">v2.4.1</span>.</p><p class="vs"><b>vs</b> <span class="mono">…_v2_3_1_patch</span>.</p></div>
+      <div class="concept reveal"><p class="term">diff &amp; revert</p><p>See exactly what changed between two points, and undo it safely.</p><p class="vs"><b>vs</b> comparing folders by eye; losing 166 lines.</p></div>
+    </div>
+
+    <p class="subhead reveal">With GitHub — the shared copy online</p>
+    <div class="concepts">
+      <div class="concept reveal"><p class="term">clone</p><p>GitHub keeps the main copy online. Cloning pulls a full copy — with all its history — onto your machine.</p><p class="vs"><b>vs</b> emailing the whole folder around.</p></div>
+      <div class="concept reveal"><p class="term"><a href="https://docs.github.com/en/get-started/using-git/pushing-commits-to-a-remote-repository" target="_blank" rel="noopener noreferrer">push</a></p><p>Send my latest commits up to GitHub, so the shared copy has them too.</p><p class="vs"><b>vs</b> no shared copy at all.</p></div>
+      <div class="concept reveal"><p class="term"><a href="https://docs.github.com/en/get-started/using-git/getting-changes-from-a-remote-repository" target="_blank" rel="noopener noreferrer">pull</a></p><p>Bring down changes from GitHub that I don't have yet. It's how two people stay in sync.</p><p class="vs"><b>vs</b> hoping you've got the newest zip.</p></div>
+      <div class="concept reveal"><p class="term"><a href="https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/about-pull-requests" target="_blank" rel="noopener noreferrer">pull request</a></p><p>Propose a batch of changes for review before they go into the main version. People can comment, then it gets merged.</p><p class="vs"><b>vs</b> changes just appearing, unchecked.</p></div>
     </div>
   </div>
 </section>

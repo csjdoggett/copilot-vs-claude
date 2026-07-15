@@ -526,7 +526,6 @@
           <li><span class="g">&#8635;</span> Re-prompt for each change</li>
           <li><span class="g">&#8635;</span> Copy the code out by hand</li>
           <li><span class="g">&#8635;</span> Paste it into a new <span class="mono">vN</span> folder</li>
-          <li><span class="g">&#8635;</span> Re-download the zip — mind the <span class="mono">(1)</span> clashes</li>
           <li><span class="g">&#8635;</span> Redo wrong turns (FastAPI, the DXF assumptions)</li>
           <li><span class="g">&#8635;</span> Lose a working version to a bad edit (407 &#8594; 241)</li>
         </ul>
@@ -565,8 +564,7 @@
         <p class="vh-caption">To see what changed between two versions I had to compare the folders myself —
           the folder name was the only note. And it didn't always move forward:
           <strong>v2.3.0 hit 407 lines, then v2.3.1 dropped to 241</strong> — a working version I lost by
-          saving over it. The <span class="mono">(1)</span> is a downloaded zip clashing with a copy already
-          on my machine. And once the zips stopped and I was copy-pasting code by hand,
+          saving over it. And once the zips stopped and I was copy-pasting code by hand,
           <strong>I stopped numbering versions at all</strong> — the last files just have no version on them.</p>
       </div>
 
@@ -596,8 +594,7 @@
     <div class="head reveal">
       <p class="eyebrow">How git works</p>
       <h2>What git is, and why it changed things.</h2>
-      <p>I'm not a developer, so here's git the way I'd explain it to someone else.
-        <a href="https://git-scm.com/" target="_blank" rel="noopener noreferrer">Git</a> is a
+      <p><a href="https://git-scm.com/" target="_blank" rel="noopener noreferrer">Git</a> is a
         <a href="https://git-scm.com/book/en/v2/Getting-Started-About-Version-Control" target="_blank" rel="noopener noreferrer">version-control</a>
         tool — a program that watches a project and records every change, so you can go back to any point,
         compare versions, and undo anything.
@@ -939,12 +936,6 @@
       '<span class="bar" style="width:' + w + '%"></span>' +
       '<span class="n">' + d[1] + '</span>';
     host.appendChild(row);
-    if (d[0].indexOf("(1)") > -1) {
-      var a = document.createElement("div");
-      a.className = "annot note";
-      a.innerHTML = "&#8627; re-downloaded zip, clashed with an existing copy";
-      host.appendChild(a);
-    }
     if (d[2] === "drop" && data[i-1] && data[i-1][2] === "peak") {
       var b = document.createElement("div");
       b.className = "annot";
